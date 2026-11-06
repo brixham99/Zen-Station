@@ -1,0 +1,268 @@
+"""Home-screen layout: scrolling tiles, badges, confirms, button hints."""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import pygame
+
+from .backdrop import build_backdrop
+from .config import Config, GameEntry
+from .controllers import PadHints
+from .launch import kodi_available
+from .thumbnails import TILE_H, TILE_W, load_tile, name_card
+
+
+# Synthetic tiles appended after games
+TV_ID = "__tv__"
+POWER_ID = "__power__"
+EXIT_ID = "__exit__"
+LAUNCHER_UPDATE_ID = "__launcher_update__"
+
+
+@dataclass
+class Tile:
+    id: str
+    name: str
+    kind: str  # game | tv | action
+    entry: GameEntry | None = None
+    image: pygame.Surface | None = None
+    enabled: bool = True
+    update_available: bool = False
+
+
+@dataclass
+class UIState:
+    selected: int = 0
+    scroll_x: float = 0.0
+    confirm_power: bool = False
+    message: str = ""
+    message_until: float = 0.0
+    fake_updates: set[str] = field(default_factory=set)  # for screenshots / selftest
+
+
+class HomeScreen:
+    GAP = 28
+    TILE_SCALE_SEL = 1.08
+    ROW_Y = 280
+
+    def __init__(self, config: Config, clock_fn=pygame.time.get_ticks) -> None:
+        self.config = config
+        self.w = config.settings.width
+        self.h = config.settings.height
+        self.clock_fn = clock_fn
+        self.backdrop = build_backdrop(self.w, self.h)
+        self.state = UIState()
+        self.tiles: list[Tile] = []
+        self._font_title = pygame.font.SysFont("dejavusans", 54, bold=True)
+        self._font_name = pygame.font.SysFont("dejavusans", 26, bold=True)
+        self._font_small = pygame.font.SysFont("dejavusans", 20)
+        self._font_badge = pygame.font.SysFont("dejavusans", 16, bold=True)
+        self._font_hint = pygame.font.SysFont("dejavusans", 22)
+        self.reload_tiles()
+
+    def reload_tiles(self, update_flags: dict[str, bool] | None = None) -> None:
+        update_flags = update_flags or {}
+        games_dir = self.config.settings.games_dir
+        tiles: list[Tile] = []
+        for g in self.config.games:
+            img = load_tile(g, games_dir)
+            tiles.append(
+                Tile(
+                    id=g.id,
+                    name=g.name,
+                    kind="game",
+                    entry=g,
+                    image=img,
+                    enabled=True,
+                    update_available=bool(update_flags.get(g.id))
+                    or g.id in self.state.fake_updates,
+                )
+            )
+        # TV / Kodi
+        has_kodi = kodi_available()
+        tv_img = name_card("TV")
+        # Dim if missing
+        if not has_kodi:
+            tv_img = tv_img.copy()
+            shade = pygame.Surface(tv_img.get_size(), pygame.SRCALPHA)
+            shade.fill((0, 0, 0, 120))
+            tv_img.blit(shade, (0, 0))
+        tiles.append(
+            Tile(
+                id=TV_ID,
+                name="TV" if has_kodi else "TV (Kodi not installed)",
+                kind="tv",
+                image=tv_img,
+                enabled=has_kodi,
+            )
+        )
+        tiles.append(
+            Tile(
+                id=POWER_ID,
+                name="Power off",
+                kind="action",
+                image=name_card("Power off"),
+                enabled=True,
+            )
+        )
+        tiles.append(
+            Tile(
+                id=EXIT_ID,
+                name="Exit to desktop",
+                kind="action",
+                image=name_card("Exit to desktop"),
+                enabled=True,
+            )
+        )
+        self.tiles = tiles
+        if self.state.selected >= len(self.tiles):
+            self.state.selected = max(0, len(self.tiles) - 1)
+        self._ensure_visible()
+
+    def set_update_flags(self, flags: dict[str, bool]) -> None:
+        for t in self.tiles:
+            if t.kind == "game":
+                t.update_available = bool(flags.get(t.id)) or t.id in self.state.fake_updates
+        self._ensure_visible()
+
+    def move(self, delta: int) -> None:
+        if self.state.confirm_power:
+            return
+        n = len(self.tiles)
+        if n == 0:
+            return
+        self.state.selected = (self.state.selected + delta) % n
+        self._ensure_visible()
+
+    def current(self) -> Tile | None:
+        if not self.tiles:
+            return None
+        return self.tiles[self.state.selected]
+
+    def flash(self, msg: str, seconds: float = 2.5) -> None:
+        self.state.message = msg
+        self.state.message_until = self.clock_fn() / 1000.0 + seconds
+
+    def _tile_span(self) -> float:
+        return TILE_W * self.TILE_SCALE_SEL + self.GAP
+
+    def _content_width(self) -> float:
+        if not self.tiles:
+            return 0
+        return len(self.tiles) * (TILE_W + self.GAP) - self.GAP + TILE_W * 0.1
+
+    def _ensure_visible(self) -> None:
+        """Keep the selected tile roughly centred / on-screen."""
+        span = TILE_W + self.GAP
+        target = self.state.selected * span - (self.w - TILE_W) / 2
+        max_scroll = max(0.0, self._content_width() - self.w + 80)
+        self.state.scroll_x = max(0.0, min(max_scroll, target))
+
+    def draw(self, screen: pygame.Surface, hints: PadHints, status_msg: str = "") -> None:
+        screen.blit(self.backdrop, (0, 0))
+
+        # Title
+        title = self._font_title.render("Games Box", True, (245, 235, 210))
+        screen.blit(title, ((self.w - title.get_width()) // 2, 48))
+        sub = self._font_small.render("Pick a game · updates when available", True, (180, 170, 150))
+        screen.blit(sub, ((self.w - sub.get_width()) // 2, 110))
+
+        # Tiles row
+        base_y = self.ROW_Y
+        x = 60 - self.state.scroll_x
+        for i, tile in enumerate(self.tiles):
+            selected = i == self.state.selected
+            scale = self.TILE_SCALE_SEL if selected else 1.0
+            tw, th = int(TILE_W * scale), int(TILE_H * scale)
+            img = tile.image or name_card(tile.name)
+            if img.get_size() != (tw, th):
+                img = pygame.transform.smoothscale(img, (tw, th))
+            rect = pygame.Rect(int(x), base_y + (TILE_H - th) // 2, tw, th)
+
+            # Card shadow
+            shadow = pygame.Surface((tw + 8, th + 8), pygame.SRCALPHA)
+            shadow.fill((0, 0, 0, 80))
+            screen.blit(shadow, (rect.x + 6, rect.y + 8))
+
+            # Rounded-ish clip via border
+            screen.blit(img, rect.topleft)
+            border_col = (255, 210, 110) if selected else (90, 85, 75)
+            width = 4 if selected else 2
+            pygame.draw.rect(screen, border_col, rect, width, border_radius=12)
+
+            if not tile.enabled:
+                dim = pygame.Surface((tw, th), pygame.SRCALPHA)
+                dim.fill((0, 0, 0, 110))
+                screen.blit(dim, rect.topleft)
+
+            if tile.update_available:
+                badge = self._font_badge.render("Update available", True, (20, 20, 20))
+                bw, bh = badge.get_width() + 16, badge.get_height() + 8
+                br = pygame.Rect(rect.right - bw - 8, rect.top + 8, bw, bh)
+                pygame.draw.rect(screen, (255, 200, 70), br, border_radius=8)
+                screen.blit(badge, (br.x + 8, br.y + 4))
+
+            # Name under tile
+            name_col = (250, 240, 220) if selected else (170, 160, 145)
+            name = self._font_name.render(tile.name, True, name_col)
+            screen.blit(name, (rect.centerx - name.get_width() // 2, rect.bottom + 14))
+
+            x += TILE_W + self.GAP
+
+        # Scroll dots / position hint when many tiles
+        if len(self.tiles) > 4:
+            self._draw_scroll_hint(screen)
+
+        # Status / flash message
+        msg = status_msg
+        now = self.clock_fn() / 1000.0
+        if self.state.message and now < self.state.message_until:
+            msg = self.state.message
+        elif self.state.message and now >= self.state.message_until:
+            self.state.message = ""
+        if msg:
+            banner = self._font_hint.render(msg, True, (240, 230, 200))
+            bg = pygame.Surface((banner.get_width() + 28, banner.get_height() + 14), pygame.SRCALPHA)
+            bg.fill((20, 16, 12, 180))
+            bx = (self.w - bg.get_width()) // 2
+            by = self.h - 110
+            screen.blit(bg, (bx, by))
+            screen.blit(banner, (bx + 14, by + 7))
+
+        # Button hints
+        hint = (
+            f"{hints.navigate}: move    {hints.confirm}: play    "
+            f"{hints.update}: update    {hints.back}: back"
+        )
+        hint_s = self._font_hint.render(hint, True, (160, 150, 135))
+        screen.blit(hint_s, ((self.w - hint_s.get_width()) // 2, self.h - 48))
+
+        if self.state.confirm_power:
+            self._draw_confirm(screen, hints)
+
+    def _draw_scroll_hint(self, screen: pygame.Surface) -> None:
+        n = len(self.tiles)
+        dot_y = self.ROW_Y + TILE_H + 58
+        total_w = n * 14
+        x0 = (self.w - total_w) // 2
+        for i in range(n):
+            col = (255, 210, 110) if i == self.state.selected else (80, 75, 65)
+            pygame.draw.circle(screen, col, (x0 + i * 14 + 5, dot_y), 4)
+
+    def _draw_confirm(self, screen: pygame.Surface, hints: PadHints) -> None:
+        overlay = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 160))
+        screen.blit(overlay, (0, 0))
+        box_w, box_h = 560, 220
+        box = pygame.Rect((self.w - box_w) // 2, (self.h - box_h) // 2, box_w, box_h)
+        pygame.draw.rect(screen, (36, 28, 22), box, border_radius=16)
+        pygame.draw.rect(screen, (255, 210, 110), box, 3, border_radius=16)
+        q = self._font_name.render("Power off the Pi?", True, (245, 235, 210))
+        screen.blit(q, (box.centerx - q.get_width() // 2, box.y + 48))
+        a = self._font_hint.render(
+            f"{hints.confirm}: yes, power off     {hints.back}: cancel",
+            True,
+            (200, 190, 170),
+        )
+        screen.blit(a, (box.centerx - a.get_width() // 2, box.y + 120))

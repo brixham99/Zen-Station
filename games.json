@@ -1,0 +1,48 @@
+{
+  "settings": {
+    "games_dir": "~/games",
+    "update_interval_sec": 180,
+    "width": 1280,
+    "height": 720,
+    "launcher_repo": "https://github.com/brixham99/Games-Box.git",
+    "launcher_branch": "main"
+  },
+  "games": [
+    {
+      "id": "daleks",
+      "name": "Daleks in Hedges",
+      "repo": "https://github.com/brixham99/Daleks-in-Hedges.git",
+      "branch": "main",
+      "entry": "game.py",
+      "folder": "Daleks-in-Hedges",
+      "thumbnail": "assets/thumbnails/daleks-in-hedges.png"
+    },
+    {
+      "id": "haunted",
+      "name": "Haunted Mansion",
+      "repo": "https://github.com/brixham99/Haunted-Mansion.git",
+      "branch": "master",
+      "entry": "game.py",
+      "folder": "Haunted-Mansion",
+      "thumbnail": "assets/thumbnails/haunted-mansion.jpg"
+    },
+    {
+      "id": "moon",
+      "name": "Moon Sweeper",
+      "repo": "https://github.com/brixham99/Moon-Sweeper.git",
+      "branch": "main",
+      "entry": "game.py",
+      "folder": "Moon-Sweeper",
+      "thumbnail": "assets/thumbnails/moon-sweeper.jpg"
+    },
+    {
+      "id": "courtyard",
+      "name": "Courtyard",
+      "repo": "https://github.com/brixham99/Courtyard.git",
+      "branch": "main",
+      "entry": "game.py",
+      "folder": "Courtyard",
+      "thumbnail": "assets/thumbnails/courtyard.png"
+    }
+  ]
+}
