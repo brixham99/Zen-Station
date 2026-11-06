@@ -38,6 +38,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--fake-update", action="append", default=[], help="Mark game id as having an update")
     p.add_argument("--confirm-power", action="store_true", help="Show power-off confirm (for shots)")
     p.add_argument("--no-updates", action="store_true", help="Skip background git checks")
+    p.add_argument("--fake-pad", choices=("xbox", "playstation", "keyboard"), default=None,
+                   help="Force on-screen button hints as if this pad were connected")
     p.add_argument("--version", action="version", version=f"Games Box {__version__}")
     return p.parse_args(argv)
 
@@ -70,6 +72,8 @@ def main(argv: list[str] | None = None) -> int:
     clock = pygame.time.Clock()
 
     hub = ControllerHub()
+    if args.fake_pad:
+        hub.force_family(args.fake_pad)
     ui = HomeScreen(config)
     for gid in args.fake_update:
         ui.state.fake_updates.add(gid)

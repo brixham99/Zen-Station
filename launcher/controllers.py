@@ -36,12 +36,23 @@ def _name_family(name: str) -> str:
 
 def hints_for(family: str) -> PadHints:
     if family == "playstation":
-        return PadHints("Cross", "Triangle", "Circle", "D-pad / stick", "playstation")
+        return PadHints("Cross", "Triangle", "Circle", "D-pad", "playstation")
     if family == "xbox":
-        return PadHints("A", "Y", "B", "D-pad / stick", "xbox")
+        return PadHints("A", "Y", "B", "D-pad", "xbox")
     if family == "keyboard":
-        return PadHints("Enter", "U", "Esc", "Arrow keys", "keyboard")
-    return PadHints("A / Cross", "Y / Triangle", "B / Circle", "D-pad / stick", "generic")
+        return PadHints("Enter", "U", "Esc", "Arrows", "keyboard")
+    return PadHints("A / Cross", "Y / Triangle", "B / Circle", "D-pad", "generic")
+
+
+def format_hints(hints: PadHints) -> str:
+    """Short on-screen legend; pad glyphs when a controller is connected."""
+    if hints.family == "xbox":
+        return f"{hints.navigate} move   {hints.confirm} play   {hints.update} update   {hints.back} back"
+    if hints.family == "playstation":
+        return f"{hints.navigate} move   {hints.confirm} play   {hints.update} update   {hints.back} back"
+    if hints.family == "keyboard":
+        return f"Arrow keys: move    Enter: play    U: update    Esc: back"
+    return f"{hints.navigate}: move    {hints.confirm}: play    {hints.update}: update    {hints.back}: back"
 
 
 class ControllerHub:
@@ -53,6 +64,7 @@ class ControllerHub:
         self.family = "keyboard"
         self._hat = (0, 0)
         self._axis_cool = 0.0
+        self._forced_family: str | None = None
         self.refresh()
 
     def refresh(self) -> None:
@@ -65,16 +77,23 @@ class ControllerHub:
                 self.pads[i] = j
             except pygame.error:
                 continue
-        if self.pads:
-            # Prefer the first pad's family
+        if self._forced_family:
+            self.family = self._forced_family
+        elif self.pads:
             first = next(iter(self.pads.values()))
             self.family = _name_family(first.get_name())
         else:
             self.family = "keyboard"
 
+    def force_family(self, family: str | None) -> None:
+        """Override detected pad family (used by selftest / screenshots)."""
+        self._forced_family = family
+        if family:
+            self.family = family
+
     @property
     def hints(self) -> PadHints:
-        return hints_for(self.family)
+        return hints_for(self._forced_family or self.family)
 
     def handle_event(self, event: pygame.event.Event) -> list[str]:
         actions: list[str] = []

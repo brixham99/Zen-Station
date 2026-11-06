@@ -35,6 +35,7 @@ class Settings:
     height: int = 720
     launcher_repo: str = ""
     launcher_branch: str = "main"
+    include_system_tiles: bool = True
 
 
 @dataclass
@@ -60,6 +61,7 @@ def load_config(path: Path | None = None) -> Config:
         height=int(s.get("height", 720)),
         launcher_repo=str(s.get("launcher_repo", "")),
         launcher_branch=str(s.get("launcher_branch", "main")),
+        include_system_tiles=bool(s.get("include_system_tiles", True)),
     )
     games: list[GameEntry] = []
     for g in raw.get("games", []):

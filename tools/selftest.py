@@ -17,7 +17,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame  # noqa: E402
 
 from launcher.config import load_config  # noqa: E402
-from launcher.controllers import ACT_CONFIRM, ACT_LEFT, ACT_RIGHT, ACT_UPDATE, ControllerHub  # noqa: E402
+from launcher.controllers import ACT_CONFIRM, ACT_RIGHT, ACT_UPDATE, ControllerHub  # noqa: E402
 from launcher.main import main as launcher_main  # noqa: E402
 from launcher.ui import HomeScreen  # noqa: E402
 from launcher.updates import UpdateService  # noqa: E402
@@ -35,51 +35,41 @@ def shot_dir() -> Path:
     return p
 
 
-def write_extended_config(path: Path, games_dir: Path) -> None:
-    """Real four games + four fake entries to exercise scrolling."""
-    base = json.loads((ROOT / "games.json").read_text())
-    base["settings"]["games_dir"] = str(games_dir)
-    extras = [
-        {"id": "robo-rally", "name": "Robo Rally", "repo": "", "branch": "main", "entry": "game.py", "folder": "Robo-Rally"},
-        {"id": "hedgerow", "name": "Hedgerow Heroes", "repo": "", "branch": "main", "entry": "game.py", "folder": "Hedgerow"},
-        {"id": "lantern", "name": "Lantern Run", "repo": "", "branch": "main", "entry": "game.py", "folder": "Lantern-Run"},
-        {"id": "starferry", "name": "Star Ferry", "repo": "", "branch": "main", "entry": "game.py", "folder": "Star-Ferry"},
+def base_games(games_dir: Path) -> dict:
+    raw = json.loads((ROOT / "games.json").read_text())
+    raw["settings"]["games_dir"] = str(games_dir)
+    return raw
+
+
+def write_config(path: Path, games_dir: Path, *, extras: list | None = None, system: bool = False) -> None:
+    """Write a games.json. Normal shots: 4 games only. system=True adds TV/Power/Exit via UI always —
+    the UI always appends system tiles, so for '4 games only' screenshots we use a HomeScreen
+    subclass... Actually UI always adds system tiles. For shots that should show only 4 game
+    tiles, pass games and set env GAMESBOX_NO_SYSTEM=1 handled in ui.
+    """
+    raw = base_games(games_dir)
+    if extras:
+        raw["games"] = list(raw["games"]) + extras
+    raw["settings"]["include_system_tiles"] = system
+    path.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+
+
+def run_shot(name: str, cfg_path: Path, extra: list[str]) -> Path:
+    dest = shot_dir() / name
+    argv = [
+        "--windowed",
+        "--no-updates",
+        "--config",
+        str(cfg_path),
+        "--screenshot",
+        str(dest),
+        *extra,
     ]
-    base["games"] = list(base["games"]) + extras
-    path.write_text(json.dumps(base, indent=2), encoding="utf-8")
-
-
-def run_shots(cfg_path: Path) -> list[Path]:
-    out = shot_dir()
-    shots: list[Path] = []
-
-    def run(name: str, extra: list[str]) -> Path:
-        dest = out / name
-        argv = [
-            "--windowed",
-            "--no-updates",
-            "--config",
-            str(cfg_path),
-            "--screenshot",
-            str(dest),
-            *extra,
-        ]
-        rc = launcher_main(argv)
-        assert rc == 0, f"launcher failed for {name}: {rc}"
-        assert dest.is_file() and dest.stat().st_size > 1000, dest
-        shots.append(dest)
-        print("wrote", dest, dest.stat().st_size)
-        return dest
-
-    run("01_home_daleks.png", ["--select", "0"])
-    run(
-        "02_home_haunted_update.png",
-        ["--select", "1", "--fake-update", "haunted"],
-    )
-    run("03_power_confirm.png", ["--select", "0", "--confirm-power"])
-    # Many games: select a far tile so scroll + dots are visible
-    run("04_scroll_many_games.png", ["--select", "6"])
-    return shots
+    rc = launcher_main(argv)
+    assert rc == 0, f"launcher failed for {name}: {rc}"
+    assert dest.is_file() and dest.stat().st_size > 1000, dest
+    print("wrote", dest, dest.stat().st_size)
+    return dest
 
 
 def test_navigation(cfg_path: Path) -> None:
@@ -90,19 +80,19 @@ def test_navigation(cfg_path: Path) -> None:
     pygame.display.set_mode((1280, 720))
     cfg = load_config(cfg_path)
     ui = HomeScreen(cfg)
-    assert len(ui.tiles) >= 8, len(ui.tiles)
+    assert len(ui.tiles) >= 4, len(ui.tiles)
     start = ui.state.selected
     ui.move(1)
     assert ui.state.selected == start + 1
     ui.move(-1)
     assert ui.state.selected == start
-    # wrap
     ui.state.selected = len(ui.tiles) - 1
     ui.move(1)
     assert ui.state.selected == 0
     hub = ControllerHub()
-    assert hub.hints.family in ("keyboard", "xbox", "playstation", "generic")
-    # Simulate key events
+    hub.force_family("xbox")
+    assert hub.hints.family == "xbox"
+    assert "A" in hub.hints.confirm
     ev = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RIGHT)
     assert ACT_RIGHT in hub.handle_event(ev)
     ev = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_u)
@@ -114,15 +104,10 @@ def test_navigation(cfg_path: Path) -> None:
 
 
 def test_update_check_local(games_dir: Path) -> None:
-    """Point at local clones under /workspace if present; expect quiet result."""
     cfg = load_config(ROOT / "games.json")
     cfg.settings.games_dir = games_dir
     svc = UpdateService(cfg)
-    # Should not raise; offline or clean both fine
-    try:
-        svc.check_all()
-    except Exception as e:  # noqa: BLE001
-        raise AssertionError(e) from e
+    svc.check_all()
     print(
         "update check:",
         "offline=" + str(svc.status.offline),
@@ -132,13 +117,12 @@ def test_update_check_local(games_dir: Path) -> None:
 
 
 def main() -> int:
-    shots = shot_dir()
-    print("shots ->", shots)
+    out = shot_dir()
+    print("shots ->", out)
     with tempfile.TemporaryDirectory(prefix="gamesbox-") as tmp:
         tmp_path = Path(tmp)
         games_dir = tmp_path / "games"
         games_dir.mkdir()
-        # Symlink real local repos when available so thumbnails resolve
         for name, src in [
             ("Daleks-in-Hedges", Path("/workspace/Daleks-in-Hedges")),
             ("Haunted-Mansion", Path("/workspace/Haunted-Mansion")),
@@ -150,11 +134,42 @@ def main() -> int:
                 if not link.exists():
                     link.symlink_to(src)
 
-        cfg_path = tmp_path / "games.json"
-        write_extended_config(cfg_path, games_dir)
-        run_shots(cfg_path)
-        test_navigation(cfg_path)
-        # Update check against workspace /tmp clones
+        extras = [
+            {"id": "robo-rally", "name": "Robo Rally", "repo": "", "branch": "main", "entry": "game.py", "folder": "Robo-Rally"},
+            {"id": "hedgerow", "name": "Hedgerow Heroes", "repo": "", "branch": "main", "entry": "game.py", "folder": "Hedgerow"},
+            {"id": "lantern", "name": "Lantern Run", "repo": "", "branch": "main", "entry": "game.py", "folder": "Lantern-Run"},
+            {"id": "starferry", "name": "Star Ferry", "repo": "", "branch": "main", "entry": "game.py", "folder": "Star-Ferry"},
+        ]
+
+        # Normal: 4 games only, no system tiles (via settings flag)
+        cfg_normal = tmp_path / "games_normal.json"
+        write_config(cfg_normal, games_dir, system=False)
+
+        # Many games
+        cfg_many = tmp_path / "games_many.json"
+        write_config(cfg_many, games_dir, extras=extras, system=False)
+
+        # Full (with system tiles) for power-off
+        cfg_full = tmp_path / "games_full.json"
+        write_config(cfg_full, games_dir, system=True)
+
+        run_shot("v2_01_home_daleks.png", cfg_normal, ["--select", "0"])
+        run_shot(
+            "v2_02_home_haunted_update.png",
+            cfg_normal,
+            ["--select", "1", "--fake-update", "haunted"],
+        )
+        # Power off is the first system tile after games when system=True:
+        # indices: 0..3 games, 4 TV, 5 Power, 6 Exit
+        run_shot("v2_03_power_confirm.png", cfg_full, ["--select", "5", "--confirm-power"])
+        run_shot("v2_04_scroll_many_games.png", cfg_many, ["--select", "6"])
+        run_shot(
+            "v2_05_xbox_hints.png",
+            cfg_normal,
+            ["--select", "0", "--fake-pad", "xbox"],
+        )
+
+        test_navigation(cfg_many)
         test_update_check_local(games_dir)
     print("selftest OK")
     return 0

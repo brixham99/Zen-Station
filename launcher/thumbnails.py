@@ -8,7 +8,7 @@ import pygame
 from .config import ROOT, GameEntry, bundled_thumbnail
 
 
-TILE_W, TILE_H = 280, 158  # 16:9-ish cards
+TILE_W, TILE_H = 248, 140  # 16:9-ish cards
 
 
 def name_card(name: str, size: tuple[int, int] = (TILE_W, TILE_H)) -> pygame.Surface:

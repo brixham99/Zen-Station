@@ -1,97 +1,107 @@
-"""Painted night-sky backdrop. Cosy living-room TV feel. No moon anywhere."""
+"""Painted night-sky backdrop. Cosy feel. No moon / planet anywhere."""
 from __future__ import annotations
 
+import math
 import random
 
+import numpy as np
 import pygame
 
 
 def build_backdrop(w: int, h: int, seed: int = 42) -> pygame.Surface:
     rng = random.Random(seed)
-    surf = pygame.Surface((w, h)).convert()
 
-    # Deep indigo → warm amber near the bottom (lamp glow)
-    for y in range(h):
-        t = y / max(1, h - 1)
-        # sky
-        r = int(8 + 18 * t + 40 * max(0, t - 0.55) ** 2 * 255 / 40)
-        g = int(12 + 22 * t + 25 * max(0, t - 0.6) ** 2 * 8)
-        b = int(28 + 40 * (1 - t) * 0.6 + 10 * t)
-        # warm floor wash
-        if t > 0.62:
-            u = (t - 0.62) / 0.38
-            r = int(r * (1 - u) + (70 + 60 * u) * u + r * (1 - u) * 0.3)
-            g = int(g * (1 - 0.5 * u) + 35 * u)
-            b = int(b * (1 - 0.7 * u) + 18 * u)
-            r = min(255, int(12 + 55 * u + 8))
-            g = min(255, int(14 + 28 * u))
-            b = min(255, int(32 + 8 * (1 - u)))
-        # recompute cleaner gradient
-        top = (10, 14, 36)
-        mid = (18, 22, 48)
-        warm = (58, 36, 22)
-        floor = (32, 22, 16)
-        if t < 0.45:
-            u = t / 0.45
-            col = _lerp(top, mid, u)
-        elif t < 0.72:
-            u = (t - 0.45) / 0.27
-            col = _lerp(mid, warm, u * u)
+    # Build at 2× then smoothscale down — kills 8-bit gradient banding.
+    ww, hh = w * 2, h * 2
+    top = np.array([8, 10, 28], dtype=np.float32)
+    upper = np.array([14, 18, 42], dtype=np.float32)
+    mid = np.array([24, 22, 44], dtype=np.float32)
+    warm = np.array([40, 28, 26], dtype=np.float32)
+    ground = np.array([18, 14, 14], dtype=np.float32)
+
+    ys = np.linspace(0.0, 1.0, hh, dtype=np.float32)
+    cols = np.zeros((hh, 3), dtype=np.float32)
+    for i, t in enumerate(ys):
+        if t < 0.38:
+            u = _smooth(t / 0.38)
+            cols[i] = top * (1 - u) + upper * u
+        elif t < 0.68:
+            u = _smooth((t - 0.38) / 0.30)
+            cols[i] = upper * (1 - u) + mid * u
+        elif t < 0.88:
+            u = _smooth((t - 0.68) / 0.20)
+            cols[i] = mid * (1 - u) + warm * u
         else:
-            u = (t - 0.72) / 0.28
-            col = _lerp(warm, floor, u)
-        pygame.draw.line(surf, col, (0, y), (w, y))
+            u = _smooth((t - 0.88) / 0.12)
+            cols[i] = warm * (1 - u) + ground * u
 
-    # Soft star field (no moon)
-    star_layer = pygame.Surface((w, h), pygame.SRCALPHA)
-    for _ in range(160):
-        x = rng.randint(0, w - 1)
-        y = rng.randint(0, int(h * 0.62))
-        a = rng.randint(60, 200)
-        size = 1 if rng.random() < 0.85 else 2
-        col = (230, 235, 255, a)
-        if size == 1:
-            star_layer.set_at((x, y), col)
-        else:
-            pygame.draw.circle(star_layer, col, (x, y), 1)
-    # a few brighter twinkles
-    for _ in range(18):
-        x = rng.randint(0, w - 1)
-        y = rng.randint(0, int(h * 0.5))
-        pygame.draw.circle(star_layer, (255, 250, 230, 180), (x, y), 1)
-        pygame.draw.circle(star_layer, (255, 250, 230, 60), (x, y), 2)
-    surf.blit(star_layer, (0, 0))
+    # Tiny blue-noise style dither (±0.6) so remaining quantisation is invisible
+    noise = (rng.random() for _ in range(1))  # noqa — seed only
+    rng2 = np.random.RandomState(seed)
+    dither = rng2.uniform(-0.6, 0.6, size=(hh, 3)).astype(np.float32)
+    cols = np.clip(cols + dither, 0, 255)
 
-    # Soft horizon haze
-    haze = pygame.Surface((w, 120), pygame.SRCALPHA)
-    for i in range(120):
-        a = int(40 * (1 - abs(i - 80) / 80) ** 2)
-        pygame.draw.line(haze, (90, 55, 30, max(0, a)), (0, i), (w, i))
-    surf.blit(haze, (0, h - 200))
+    big = np.zeros((hh, ww, 3), dtype=np.uint8)
+    big[:, :, :] = cols[:, None, :].astype(np.uint8)
 
-    # Gentle vignette — soft darkening toward the edges (no hard rings)
-    vignette = pygame.Surface((w, h), pygame.SRCALPHA)
-    edge = 110
-    for i in range(edge):
-        a = int(90 * ((edge - 1 - i) / edge) ** 2)
-        # top / bottom bands
-        pygame.draw.line(vignette, (0, 0, 0, a), (0, i), (w, i))
-        pygame.draw.line(vignette, (0, 0, 0, a), (0, h - 1 - i), (w, h - 1 - i))
-        # left / right bands
-        pygame.draw.line(vignette, (0, 0, 0, a), (i, 0), (i, h))
-        pygame.draw.line(vignette, (0, 0, 0, a), (w - 1 - i, 0), (w - 1 - i, h))
-    surf.blit(vignette, (0, 0))
+    # Stars (single pixels on the hi-res buffer)
+    for _ in range(280):
+        x = rng.randint(0, ww - 1)
+        y = rng.randint(0, int(hh * 0.58))
+        bright = rng.randint(160, 255)
+        big[y, x] = (
+            min(255, int(big[y, x, 0] * 0.3 + bright * 0.7)),
+            min(255, int(big[y, x, 1] * 0.3 + bright * 0.7)),
+            min(255, int(big[y, x, 2] * 0.3 + bright * 0.85)),
+        )
 
-    # Cosy side lamp glow (left)
-    glow = pygame.Surface((w, h), pygame.SRCALPHA)
-    for r in range(220, 0, -8):
-        a = int(18 * (r / 220) ** 2)
-        pygame.draw.circle(glow, (255, 170, 80, a), (90, h - 40), r)
-    surf.blit(glow, (0, 0))
+    surf = pygame.surfarray.make_surface(np.transpose(big, (1, 0, 2)))
+    surf = pygame.transform.smoothscale(surf, (w, h)).convert()
 
+    # Hedge / rooftop silhouette
+    sil = pygame.Surface((w, h), pygame.SRCALPHA)
+    base_y = int(h * 0.82)
+    pts = [(0, h)]
+    x = 0
+    while x <= w:
+        bump = int(12 * math.sin(x * 0.011 + 0.5) + 7 * math.sin(x * 0.027))
+        pts.append((x, base_y + bump))
+        x += 4
+    pts.append((w, h))
+    pygame.draw.polygon(sil, (4, 5, 10, 240), pts)
+
+    roofs = [
+        (70, 64, 46),
+        (200, 84, 60),
+        (400, 56, 42),
+        (760, 78, 56),
+        (960, 52, 44),
+        (1120, 70, 52),
+    ]
+    for rx, rw, rh in roofs:
+        top_y = base_y - rh + int(5 * math.sin(rx * 0.01))
+        pygame.draw.rect(sil, (4, 5, 10, 250), (rx, top_y, rw, h - top_y))
+        pygame.draw.polygon(
+            sil,
+            (4, 5, 10, 255),
+            [(rx - 3, top_y + 6), (rx + rw // 2, top_y - 12), (rx + rw + 3, top_y + 6)],
+        )
+        if rw > 40:
+            pygame.draw.rect(
+                sil,
+                (150, 105, 50, 40),
+                (rx + rw // 2 - 2, top_y + rh // 2, 5, 6),
+            )
+
+    # Soft feather: blit silhouette slightly raised with low alpha first
+    feather = pygame.Surface((w, h), pygame.SRCALPHA)
+    feather.blit(sil, (0, -3))
+    feather.set_alpha(70)
+    surf.blit(feather, (0, 0))
+    surf.blit(sil, (0, 0))
     return surf
 
 
-def _lerp(a, b, t: float):
-    t = max(0.0, min(1.0, t))
-    return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+def _smooth(u: float) -> float:
+    u = max(0.0, min(1.0, u))
+    return u * u * (3 - 2 * u)
