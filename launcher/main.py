@@ -135,24 +135,24 @@ def main(argv: list[str] | None = None) -> int:
                 power_off()
                 return 0
             elif action == "tv":
-                _suspend_display()
+                _show_loading(screen, ui, "Starting TV…")
                 try:
-                    launch_kodi()
+                    launch_kodi(while_waiting=_keep_alive)
                 except FileNotFoundError:
                     ui.flash("Kodi is not installed")
-                screen = _resume_display(screen, config, args)
+                _after_child()
                 hub.refresh()
             elif isinstance(action, tuple) and action[0] == "game":
                 game = action[1]
-                _suspend_display()
+                _show_loading(screen, ui, f"Starting {game.name}…")
                 try:
-                    launch_game(game, config.settings.games_dir)
+                    launch_game(game, config.settings.games_dir, while_waiting=_keep_alive)
                 except FileNotFoundError:
                     ui.flash(f"{game.name} is not installed yet")
                 except Exception as e:  # noqa: BLE001
                     ui.flash(f"Could not start {game.name}")
                     print(e, file=sys.stderr)
-                screen = _resume_display(screen, config, args)
+                _after_child()
                 hub.refresh()
 
     pygame.quit()
@@ -224,6 +224,25 @@ def _handle_action(act: str, ui: HomeScreen, updates: UpdateService, hub: Contro
         if tile.kind == "game" and tile.entry:
             return ("game", tile.entry)
     return None
+
+
+def _show_loading(screen, ui, text: str) -> None:
+    """Keep Zen Station's full-screen window up behind the game so the desktop never shows."""
+    screen.fill((8, 8, 12))
+    label = ui._font_title.render(text, True, (245, 235, 210))
+    screen.blit(label, label.get_rect(center=screen.get_rect().center))
+    pygame.display.flip()
+
+
+def _keep_alive() -> None:
+    # Answer the window system while the game runs, and throw away the events
+    pygame.event.pump()
+    pygame.event.clear()
+
+
+def _after_child() -> None:
+    # Drop any key/quit events left over from the game (e.g. its Esc or window close)
+    pygame.event.clear()
 
 
 def _suspend_display() -> None:
