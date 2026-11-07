@@ -33,6 +33,7 @@ class Tile:
     enabled: bool = True
     update_available: bool = False
     just_updated: bool = False
+    up_to_date_until: float = 0.0   # a brief "Up to date" after Y found nothing new
 
 
 @dataclass
@@ -131,6 +132,12 @@ class HomeScreen:
             if t.kind == "game":
                 t.update_available = bool(flags.get(t.id)) or t.id in self.state.fake_updates
                 t.just_updated = (t.id in updated) and not t.update_available
+
+    def mark_up_to_date(self, tile_id: str, seconds: float = 2.5) -> None:
+        until = self.clock_fn() / 1000.0 + seconds
+        for t in self.tiles:
+            if t.id == tile_id:
+                t.up_to_date_until = until
 
     def move(self, delta: int) -> None:
         if self.state.confirm_power:
@@ -248,6 +255,12 @@ class HomeScreen:
                 bw, bh = badge.get_width() + 16, badge.get_height() + 8
                 br = pygame.Rect(rect.right - bw - 8, rect.top + 8, bw, bh)
                 pygame.draw.rect(screen, (255, 200, 70), br, border_radius=8)
+                screen.blit(badge, (br.x + 8, br.y + 4))
+            elif getattr(tile, "up_to_date_until", 0.0) > self.clock_fn() / 1000.0:
+                badge = self._font_badge.render("Up to date", True, (255, 255, 255))
+                bw, bh = badge.get_width() + 16, badge.get_height() + 8
+                br = pygame.Rect(rect.right - bw - 8, rect.top + 8, bw, bh)
+                pygame.draw.rect(screen, (70, 110, 160), br, border_radius=8)
                 screen.blit(badge, (br.x + 8, br.y + 4))
             elif getattr(tile, "just_updated", False):
                 badge = self._font_badge.render("Updated", True, (255, 255, 255))

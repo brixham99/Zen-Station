@@ -189,6 +189,9 @@ def _handle_action(act: str, ui: HomeScreen, updates: UpdateService, hub: Contro
                 msg = updates.pull_game(tile.entry)
                 if msg == "ok":
                     ui.flash(f"{tile.name} updated")
+                elif msg == "current":
+                    ui.mark_up_to_date(tile.id)
+                    ui.flash(f"{tile.name} is up to date")
                 elif msg == "offline":
                     ui.flash("Offline")
                 else:
@@ -203,6 +206,8 @@ def _handle_action(act: str, ui: HomeScreen, updates: UpdateService, hub: Contro
                 msg = updates.pull_launcher()
                 if msg == "ok":
                     ui.flash("Zen Station updated — restart to apply")
+                elif msg == "current":
+                    ui.flash("Zen Station is up to date")
                 elif msg == "offline":
                     ui.flash("Offline")
                 else:

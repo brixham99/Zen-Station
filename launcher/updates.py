@@ -118,6 +118,10 @@ class UpdateService:
                 self.status.available[game.id] = False
                 self.status.updated.add(game.id)
                 self._save_updated()
+        elif msg == "current":
+            # Nothing new: no green Updated badge, and no stale Update available.
+            with self._lock:
+                self.status.available[game.id] = False
         return msg
 
     def pull_launcher(self) -> str:
@@ -167,14 +171,16 @@ class UpdateService:
             if not (path / ".git").exists():
                 return "not a git repo"
             req_before = self._req_hash(path)
+            head_before = self._head(path)
             self._run(["git", "fetch", "origin", branch], cwd=path)
             self._run(["git", "pull", "--ff-only", "origin", branch], cwd=path)
             req_after = self._req_hash(path)
             if req_before != req_after:
                 self._pip_install(path)
+            changed = self._head(path) != head_before
             with self._lock:
-                self.status.message = f"{label} up to date"
-            return "ok"
+                self.status.message = f"{label} updated" if changed else f"{label} up to date"
+            return "ok" if changed else "current"
         except OfflineError:
             with self._lock:
                 self.status.offline = True
@@ -188,6 +194,12 @@ class UpdateService:
         finally:
             with self._lock:
                 self.status.busy = False
+
+    def _head(self, path: Path) -> str:
+        try:
+            return self._run(["git", "rev-parse", "HEAD"], cwd=path, quiet=True).stdout.strip()
+        except Exception:  # noqa: BLE001
+            return ""
 
     def _has_update(self, path: Path, branch: str) -> bool:
         if not (path / ".git").exists():
