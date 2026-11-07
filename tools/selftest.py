@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Headless self-test and screenshot pass for Games Box."""
+"""Headless self-test and screenshot pass for Zen Station."""
 from __future__ import annotations
 
 import json
@@ -24,11 +24,11 @@ from launcher.updates import UpdateService  # noqa: E402
 
 
 def shot_dir() -> Path:
-    env = os.environ.get("GAMESBOX_SHOTS")
+    env = os.environ.get("ZENSTATION_SHOTS")
     if env:
         p = Path(env)
     elif Path("/workspace").is_dir():
-        p = Path("/workspace/gamesbox_shots")
+        p = Path("/workspace/zenstation_shots")
     else:
         p = ROOT / "shots"
     p.mkdir(parents=True, exist_ok=True)
@@ -45,7 +45,7 @@ def write_config(path: Path, games_dir: Path, *, extras: list | None = None, sys
     """Write a games.json. Normal shots: 4 games only. system=True adds TV/Power/Exit via UI always —
     the UI always appends system tiles, so for '4 games only' screenshots we use a HomeScreen
     subclass... Actually UI always adds system tiles. For shots that should show only 4 game
-    tiles, pass games and set env GAMESBOX_NO_SYSTEM=1 handled in ui.
+    tiles, pass games and set env ZENSTATION_NO_SYSTEM=1 handled in ui.
     """
     raw = base_games(games_dir)
     if extras:
@@ -119,7 +119,7 @@ def test_update_check_local(games_dir: Path) -> None:
 def main() -> int:
     out = shot_dir()
     print("shots ->", out)
-    with tempfile.TemporaryDirectory(prefix="gamesbox-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="zenstation-") as tmp:
         tmp_path = Path(tmp)
         games_dir = tmp_path / "games"
         games_dir.mkdir()

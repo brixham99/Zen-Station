@@ -4,7 +4,7 @@
     "update_interval_sec": 180,
     "width": 1280,
     "height": 720,
-    "launcher_repo": "https://github.com/brixham99/Games-Box.git",
+    "launcher_repo": "https://github.com/brixham99/Zen-Station.git",
     "launcher_branch": "main"
   },
   "games": [

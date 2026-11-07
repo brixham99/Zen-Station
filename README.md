@@ -1,4 +1,4 @@
-# Games Box
+# Zen Station
 
 A controller-driven home screen for a Raspberry Pi 5 plugged into the telly.
 Pick Daleks in Hedges, Haunted Mansion, Moon Sweeper or Courtyard, update them
@@ -23,22 +23,22 @@ the Pi.
 2. Open **Terminal** and run:
 
 ```bash
-git clone https://github.com/brixham99/Games-Box.git
-cd Games-Box
+git clone https://github.com/brixham99/Zen-Station.git
+cd Zen-Station
 ./install.sh
 ```
 
-(`Games-Box` will be on GitHub after the first commit; until then you can copy
+(`Zen-Station` will be on GitHub after the first commit; until then you can copy
 this folder onto the Pi with a USB stick and run `./install.sh` from there.)
 
-3. Reboot. After the desktop loads, **Games Box** should start on its own.
+3. Reboot. After the desktop loads, **Zen Station** should start on its own.
 
 To start it by hand later:
 
 ```bash
-games-box
+zen-station
 # or windowed on a monitor while testing:
-games-box --windowed
+zen-station --windowed
 ```
 
 Optional TV apps:
@@ -98,18 +98,18 @@ default is `main`. Haunted Mansion uses `master`).
 
 `install.sh` writes:
 
-`~/.config/autostart/games-box.desktop`
+`~/.config/autostart/zen-station.desktop`
 
 Raspberry Pi OS Bookworm’s desktop (labwc / wayfire) starts `.desktop` files in
 that folder when you log into the graphical session. The Pi is set to auto-login
-to the desktop by default on the kit image, so Games Box appears after boot
+to the desktop by default on the kit image, so Zen Station appears after boot
 without a display manager tweak. To stop auto-start, delete or rename that
 file.
 
 ## Layout on disk
 
 ```
-~/Games-Box/          # this launcher (or wherever you cloned it)
+~/Zen-Station/          # this launcher (or wherever you cloned it)
 ~/games/
   Daleks-in-Hedges/
   Haunted-Mansion/
@@ -143,5 +143,5 @@ pip install -r requirements.txt
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy python3 -m tools.selftest
 ```
 
-Screenshots from the self-test land in `/workspace/gamesbox_shots/` when run on
+Screenshots from the self-test land in `/workspace/zenstation_shots/` when run on
 the build machine, or `./shots/` locally.

@@ -11,7 +11,7 @@ from .config import GameEntry
 
 
 def python_for_games() -> str:
-    return os.environ.get("GAMESBOX_PYTHON", sys.executable)
+    return os.environ.get("ZENSTATION_PYTHON", sys.executable)
 
 
 def launch_game(game: GameEntry, games_dir: Path) -> int:

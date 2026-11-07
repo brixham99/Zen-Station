@@ -184,7 +184,7 @@ class HomeScreen:
     def draw(self, screen: pygame.Surface, hints: PadHints, status_msg: str = "") -> None:
         screen.blit(self.backdrop, (0, 0))
 
-        title = self._font_title.render("Games Box", True, (245, 235, 210))
+        title = self._font_title.render("Zen Station", True, (245, 235, 210))
         screen.blit(title, ((self.w - title.get_width()) // 2, 42))
         sub = self._font_small.render("Pick a game · updates when available", True, (180, 170, 150))
         screen.blit(sub, ((self.w - sub.get_width()) // 2, 104))

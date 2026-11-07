@@ -94,7 +94,7 @@ class UpdateService:
         return self._pull(path, game.branch, label=game.name)
 
     def pull_launcher(self) -> str:
-        return self._pull(ROOT, self.config.settings.launcher_branch, label="Games Box")
+        return self._pull(ROOT, self.config.settings.launcher_branch, label="Zen Station")
 
     def ensure_cloned(self, game: GameEntry) -> str:
         """Clone a missing game repo. Returns a short status message."""
@@ -179,7 +179,7 @@ class UpdateService:
         req = path / "requirements.txt"
         if not req.is_file():
             return
-        pip = os.environ.get("GAMESBOX_PIP", "")
+        pip = os.environ.get("ZENSTATION_PIP", "")
         if not pip:
             # Prefer pip next to the running interpreter (venv)
             import sys

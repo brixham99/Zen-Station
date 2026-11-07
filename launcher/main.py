@@ -1,4 +1,4 @@
-"""Games Box launcher entry point."""
+"""Zen Station launcher entry point."""
 from __future__ import annotations
 
 import argparse
@@ -27,7 +27,7 @@ from .updates import UpdateService
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Games Box home screen")
+    p = argparse.ArgumentParser(description="Zen Station home screen")
     p.add_argument("--windowed", action="store_true", help="Run in a window (for testing)")
     p.add_argument("--fullscreen", action="store_true", help="Force full screen")
     p.add_argument("--config", type=Path, default=None, help="Path to games.json")
@@ -40,7 +40,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--no-updates", action="store_true", help="Skip background git checks")
     p.add_argument("--fake-pad", choices=("xbox", "playstation", "keyboard"), default=None,
                    help="Force on-screen button hints as if this pad were connected")
-    p.add_argument("--version", action="version", version=f"Games Box {__version__}")
+    p.add_argument("--version", action="version", version=f"Zen Station {__version__}")
     return p.parse_args(argv)
 
 
@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     pygame.init()
     pygame.font.init()
     clear_font_cache()
-    pygame.display.set_caption("Games Box")
+    pygame.display.set_caption("Zen Station")
     flags = 0
     if args.windowed:
         flags = 0
@@ -201,7 +201,7 @@ def _handle_action(act: str, ui: HomeScreen, updates: UpdateService, hub: Contro
             def do_self() -> None:
                 msg = updates.pull_launcher()
                 if msg == "ok":
-                    ui.flash("Games Box updated — restart to apply")
+                    ui.flash("Zen Station updated — restart to apply")
                 elif msg == "offline":
                     ui.flash("Offline")
                 else:
@@ -236,7 +236,7 @@ def _resume_display(screen_holder, config, args) -> None:
     if not args.windowed and os.environ.get("SDL_VIDEODRIVER") != "dummy":
         flags = pygame.FULLSCREEN | pygame.SCALED
     pygame.display.set_mode((config.settings.width, config.settings.height), flags)
-    pygame.display.set_caption("Games Box")
+    pygame.display.set_caption("Zen Station")
 
 
 if __name__ == "__main__":

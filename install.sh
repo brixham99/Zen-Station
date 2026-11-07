@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Idempotent Games Box installer for Raspberry Pi OS Bookworm (64-bit).
+# Idempotent Zen Station installer for Raspberry Pi OS Bookworm (64-bit).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -7,7 +7,7 @@ GAMES_DIR="${GAMES_DIR:-$HOME/games}"
 VENV="$ROOT/.venv"
 CONFIG="$ROOT/games.json"
 
-echo "=== Games Box installer ==="
+echo "=== Zen Station installer ==="
 echo "Launcher: $ROOT"
 echo "Games:    $GAMES_DIR"
 
@@ -45,8 +45,8 @@ source "$VENV/bin/activate"
 pip install --upgrade pip wheel
 pip install -r "$ROOT/requirements.txt"
 
-export GAMESBOX_PYTHON="$VENV/bin/python"
-export GAMESBOX_PIP="$VENV/bin/pip"
+export ZENSTATION_PYTHON="$VENV/bin/python"
+export ZENSTATION_PIP="$VENV/bin/pip"
 
 echo "--- Clone / update games from games.json ---"
 mkdir -p "$GAMES_DIR"
@@ -90,13 +90,13 @@ echo "--- Autostart (desktop session) ---"
 # ~/.config/autostart/*.desktop via xdg / the desktop portal.
 AUTOSTART_DIR="$HOME/.config/autostart"
 mkdir -p "$AUTOSTART_DIR"
-DESKTOP="$AUTOSTART_DIR/games-box.desktop"
+DESKTOP="$AUTOSTART_DIR/zen-station.desktop"
 cat > "$DESKTOP" << DESK
 [Desktop Entry]
 Type=Application
-Name=Games Box
+Name=Zen Station
 Comment=Controller-driven games home screen
-Exec=env GAMESBOX_PYTHON=$VENV/bin/python GAMESBOX_PIP=$VENV/bin/pip $VENV/bin/python -m launcher
+Exec=env ZENSTATION_PYTHON=$VENV/bin/python ZENSTATION_PIP=$VENV/bin/pip $VENV/bin/python -m launcher
 Path=$ROOT
 Terminal=false
 X-GNOME-Autostart-enabled=true
@@ -107,20 +107,20 @@ echo "Wrote $DESKTOP"
 # Convenience wrapper on PATH for this user
 BIN="$HOME/.local/bin"
 mkdir -p "$BIN"
-cat > "$BIN/games-box" << WRAP
+cat > "$BIN/zen-station" << WRAP
 #!/usr/bin/env bash
-export GAMESBOX_PYTHON="$VENV/bin/python"
-export GAMESBOX_PIP="$VENV/bin/pip"
+export ZENSTATION_PYTHON="$VENV/bin/python"
+export ZENSTATION_PIP="$VENV/bin/pip"
 cd "$ROOT"
 exec "$VENV/bin/python" -m launcher "\$@"
 WRAP
-chmod +x "$BIN/games-box"
+chmod +x "$BIN/zen-station"
 chmod +x "$ROOT/install.sh"
 
 echo
 echo "Done."
-echo "Reboot to start Games Box automatically on the desktop,"
-echo "or run:  games-box --windowed"
+echo "Reboot to start Zen Station automatically on the desktop,"
+echo "or run:  zen-station --windowed"
 echo
 echo "Optional TV apps:  sudo apt install kodi"
 echo "Controller tip: plug in the wired Xbox pad before launching."
