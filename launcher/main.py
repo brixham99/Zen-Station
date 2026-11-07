@@ -22,6 +22,8 @@ from .controllers import (
 )
 from .launch import launch_game, launch_kodi, power_off
 from .ui import EXIT_ID, POWER_ID, TV_ID, HomeScreen
+
+QUIT_HOLD_S = 1.5  # seconds Q must be held on the launcher to exit to the desktop
 from .thumbnails import clear_font_cache
 from .updates import UpdateService
 
@@ -96,6 +98,7 @@ def main(argv: list[str] | None = None) -> int:
 
     running = True
     pending_action = None  # set when leaving to launch something
+    q_held = 0.0           # hold Q on the keyboard to exit to the desktop
 
     while running:
         dt = clock.tick(60) / 1000.0
@@ -108,6 +111,16 @@ def main(argv: list[str] | None = None) -> int:
 
         for act in hub.poll_sticks(dt):
             pending_action = _handle_action(act, ui, updates, hub) or pending_action
+
+        # Keyboard only: hold Q for a moment to exit to the desktop.
+        if pygame.key.get_pressed()[pygame.K_q]:
+            q_held += dt
+            if q_held >= QUIT_HOLD_S:
+                running = False
+            else:
+                ui.flash("Keep holding Q to exit to the desktop", 0.3)
+        else:
+            q_held = 0.0
 
         # Refresh update badges
         ui.set_update_flags(updates.status.available, updates.status.updated)

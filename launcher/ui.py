@@ -112,15 +112,6 @@ class HomeScreen:
                     enabled=True,
                 )
             )
-            tiles.append(
-                Tile(
-                    id=EXIT_ID,
-                    name="Exit to desktop",
-                    kind="action",
-                    image=name_card("Exit to desktop"),
-                    enabled=True,
-                )
-            )
         self.tiles = tiles
         if self.state.selected >= len(self.tiles):
             self.state.selected = max(0, len(self.tiles) - 1)
