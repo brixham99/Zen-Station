@@ -50,6 +50,22 @@ sudo apt install kodi
 The home screen’s **TV** tile launches Kodi when it is installed; otherwise the
 tile is greyed out.
 
+## Kiosk mode (no desktop)
+
+To boot straight into Zen Station without loading the desktop:
+
+```bash
+cd ~/Zen-Station && git pull && ./install.sh --kiosk
+sudo reboot
+```
+
+The Pi logs in on the console and starts Zen Station in `cage`, a tiny
+full-screen display server. Wi-Fi, updates, sound, games and Kodi all work as
+before. Hold **Q** on the launcher to exit to a text console, where
+`zen-station-tv` starts it again and `zen-desktop` opens the normal desktop.
+
+To go back to the desktop version: `./install.sh --desktop` then reboot.
+
 ## Controls
 
 | Action | Xbox | PlayStation | Keyboard |

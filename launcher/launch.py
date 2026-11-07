@@ -44,7 +44,12 @@ def kodi_available() -> bool:
 
 
 def launch_kodi(while_waiting=None) -> int:
-    cmd = shutil.which("kodi-standalone") or shutil.which("kodi")
+    # Inside the kiosk display server Kodi runs as a normal window; on the
+    # desktop, kodi-standalone is fine too.
+    if os.environ.get("ZENSTATION_KIOSK"):
+        cmd = shutil.which("kodi") or shutil.which("kodi-standalone")
+    else:
+        cmd = shutil.which("kodi-standalone") or shutil.which("kodi")
     if not cmd:
         raise FileNotFoundError("Kodi is not installed")
     env = os.environ.copy()

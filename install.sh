@@ -107,6 +107,7 @@ echo "--- Autostart (desktop session) ---"
 AUTOSTART_DIR="$HOME/.config/autostart"
 mkdir -p "$AUTOSTART_DIR"
 DESKTOP="$AUTOSTART_DIR/zen-station.desktop"
+if [[ -f "$DESKTOP.off" ]]; then DESKTOP="$DESKTOP.off"; fi  # kiosk mode keeps it parked
 cat > "$DESKTOP" << DESK
 [Desktop Entry]
 Type=Application
@@ -123,6 +124,13 @@ echo "Wrote $DESKTOP"
 chmod +x "$ROOT/install.sh"
 
 echo
+if [[ "${1:-}" == "--kiosk" ]]; then
+  echo "--- Kiosk mode (no desktop) ---"
+  bash "$ROOT/tools/kiosk.sh" on
+elif [[ "${1:-}" == "--desktop" ]]; then
+  bash "$ROOT/tools/kiosk.sh" off
+fi
+
 echo "Done."
 echo "Reboot to start Zen Station automatically on the desktop,"
 echo "or run:  zen-station --windowed"
