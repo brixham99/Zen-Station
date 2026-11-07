@@ -24,5 +24,6 @@ fi
 
 # Steady HDMI sound (no sleeping output, fixed 48 kHz); no-op if already set
 bash "$ROOT/tools/hdmi_audio.sh" || true
+bash "$ROOT/tools/hdmi_boot.sh" || true
 
 exec "$ZENSTATION_PYTHON" -m launcher "$@"

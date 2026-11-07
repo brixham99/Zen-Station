@@ -99,6 +99,7 @@ chmod +x "$BIN/zen-station"
 
 echo "--- Steady HDMI sound ---"
 bash "$ROOT/tools/hdmi_audio.sh" || true
+bash "$ROOT/tools/hdmi_boot.sh" || true
 
 echo "--- Autostart (desktop session) ---"
 # Raspberry Pi OS Bookworm uses labwc (Wayland) or wayfire; both honour
