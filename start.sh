@@ -22,4 +22,7 @@ if [[ -z "${ZENSTATION_NO_PULL:-}" && -d .git ]]; then
   fi
 fi
 
+# Steady HDMI sound (no sleeping output, fixed 48 kHz); no-op if already set
+bash "$ROOT/tools/hdmi_audio.sh" || true
+
 exec "$ZENSTATION_PYTHON" -m launcher "$@"

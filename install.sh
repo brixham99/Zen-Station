@@ -97,6 +97,9 @@ exec "$ROOT/start.sh" "\$@"
 WRAP
 chmod +x "$BIN/zen-station"
 
+echo "--- Steady HDMI sound ---"
+bash "$ROOT/tools/hdmi_audio.sh" || true
+
 echo "--- Autostart (desktop session) ---"
 # Raspberry Pi OS Bookworm uses labwc (Wayland) or wayfire; both honour
 # ~/.config/autostart/*.desktop via xdg / the desktop portal.
