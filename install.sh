@@ -85,25 +85,6 @@ for g in cfg.get("games", []):
 print("Games ready under", games_dir)
 PY
 
-echo "--- Autostart (desktop session) ---"
-# Raspberry Pi OS Bookworm uses labwc (Wayland) or wayfire; both honour
-# ~/.config/autostart/*.desktop via xdg / the desktop portal.
-AUTOSTART_DIR="$HOME/.config/autostart"
-mkdir -p "$AUTOSTART_DIR"
-DESKTOP="$AUTOSTART_DIR/zen-station.desktop"
-cat > "$DESKTOP" << DESK
-[Desktop Entry]
-Type=Application
-Name=Zen Station
-Comment=Controller-driven games home screen
-Exec=env ZENSTATION_PYTHON=$VENV/bin/python ZENSTATION_PIP=$VENV/bin/pip $VENV/bin/python -m launcher
-Path=$ROOT
-Terminal=false
-X-GNOME-Autostart-enabled=true
-StartupNotify=false
-DESK
-echo "Wrote $DESKTOP"
-
 # Convenience wrapper on PATH for this user
 BIN="$HOME/.local/bin"
 mkdir -p "$BIN"
@@ -115,6 +96,26 @@ cd "$ROOT"
 exec "$VENV/bin/python" -m launcher "\$@"
 WRAP
 chmod +x "$BIN/zen-station"
+
+echo "--- Autostart (desktop session) ---"
+# Raspberry Pi OS Bookworm uses labwc (Wayland) or wayfire; both honour
+# ~/.config/autostart/*.desktop via xdg / the desktop portal.
+AUTOSTART_DIR="$HOME/.config/autostart"
+mkdir -p "$AUTOSTART_DIR"
+DESKTOP="$AUTOSTART_DIR/zen-station.desktop"
+cat > "$DESKTOP" << DESK
+[Desktop Entry]
+Type=Application
+Name=Zen Station
+Comment=Controller-driven games home screen
+Exec=$BIN/zen-station
+Path=$ROOT
+Terminal=false
+X-GNOME-Autostart-enabled=true
+StartupNotify=false
+DESK
+echo "Wrote $DESKTOP"
+
 chmod +x "$ROOT/install.sh"
 
 echo
