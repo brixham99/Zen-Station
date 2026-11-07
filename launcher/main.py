@@ -110,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
             pending_action = _handle_action(act, ui, updates, hub) or pending_action
 
         # Refresh update badges
-        ui.set_update_flags(updates.status.available)
+        ui.set_update_flags(updates.status.available, updates.status.updated)
 
         status = updates.status.message
         if updates.status.offline and not status:
@@ -147,6 +147,7 @@ def main(argv: list[str] | None = None) -> int:
                 _show_loading(screen, ui, f"Starting {game.name}…")
                 try:
                     launch_game(game, config.settings.games_dir, while_waiting=_keep_alive)
+                    updates.mark_played(game.id)
                 except FileNotFoundError:
                     ui.flash(f"{game.name} is not installed yet")
                 except Exception as e:  # noqa: BLE001

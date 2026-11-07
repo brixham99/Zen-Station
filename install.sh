@@ -92,8 +92,8 @@ cat > "$BIN/zen-station" << WRAP
 #!/usr/bin/env bash
 export ZENSTATION_PYTHON="$VENV/bin/python"
 export ZENSTATION_PIP="$VENV/bin/pip"
-cd "$ROOT"
-exec "$VENV/bin/python" -m launcher "\$@"
+# start.sh pulls the latest Zen Station before starting it
+exec "$ROOT/start.sh" "\$@"
 WRAP
 chmod +x "$BIN/zen-station"
 

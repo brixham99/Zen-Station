@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import subprocess
 import threading
@@ -21,6 +22,7 @@ class UpdateStatus:
     busy: bool = False
     message: str = ""
     offline: bool = False
+    updated: set[str] = field(default_factory=set)  # ids updated but not yet played
 
 
 class UpdateService:
@@ -30,6 +32,25 @@ class UpdateService:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
+        self._updated_file = self.config.settings.games_dir / ".zen_updated.json"
+        try:
+            self.status.updated = set(json.loads(self._updated_file.read_text()))
+        except Exception:  # noqa: BLE001
+            self.status.updated = set()
+
+    def _save_updated(self) -> None:
+        try:
+            self._updated_file.parent.mkdir(parents=True, exist_ok=True)
+            self._updated_file.write_text(json.dumps(sorted(self.status.updated)))
+        except OSError:
+            pass
+
+    def mark_played(self, game_id: str) -> None:
+        """Clear the green Updated badge once the game has been played."""
+        with self._lock:
+            if game_id in self.status.updated:
+                self.status.updated.discard(game_id)
+                self._save_updated()
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -48,9 +69,9 @@ class UpdateService:
         while not self._stop.wait(interval):
             self.check_all()
 
-    def check_all(self) -> None:
+    def check_all(self, force: bool = False) -> None:
         with self._lock:
-            if self.status.busy:
+            if self.status.busy and not force:
                 return
         offline = False
         avail: dict[str, bool] = {}
@@ -91,7 +112,13 @@ class UpdateService:
 
     def pull_game(self, game: GameEntry) -> str:
         path = game.path_under(self.config.settings.games_dir)
-        return self._pull(path, game.branch, label=game.name)
+        msg = self._pull(path, game.branch, label=game.name)
+        if msg == "ok":
+            with self._lock:
+                self.status.available[game.id] = False
+                self.status.updated.add(game.id)
+                self._save_updated()
+        return msg
 
     def pull_launcher(self) -> str:
         return self._pull(ROOT, self.config.settings.launcher_branch, label="Zen Station")
@@ -147,9 +174,6 @@ class UpdateService:
                 self._pip_install(path)
             with self._lock:
                 self.status.message = f"{label} up to date"
-                self.status.available[path.name] = False
-            # Refresh flags
-            self.check_all()
             return "ok"
         except OfflineError:
             with self._lock:

@@ -32,6 +32,7 @@ class Tile:
     image: pygame.Surface | None = None
     enabled: bool = True
     update_available: bool = False
+    just_updated: bool = False
 
 
 @dataclass
@@ -124,10 +125,12 @@ class HomeScreen:
             self.state.selected = max(0, len(self.tiles) - 1)
         self._ensure_visible()
 
-    def set_update_flags(self, flags: dict[str, bool]) -> None:
+    def set_update_flags(self, flags: dict[str, bool], updated: set[str] | None = None) -> None:
+        updated = updated or set()
         for t in self.tiles:
             if t.kind == "game":
                 t.update_available = bool(flags.get(t.id)) or t.id in self.state.fake_updates
+                t.just_updated = (t.id in updated) and not t.update_available
 
     def move(self, delta: int) -> None:
         if self.state.confirm_power:
@@ -245,6 +248,12 @@ class HomeScreen:
                 bw, bh = badge.get_width() + 16, badge.get_height() + 8
                 br = pygame.Rect(rect.right - bw - 8, rect.top + 8, bw, bh)
                 pygame.draw.rect(screen, (255, 200, 70), br, border_radius=8)
+                screen.blit(badge, (br.x + 8, br.y + 4))
+            elif getattr(tile, "just_updated", False):
+                badge = self._font_badge.render("Updated", True, (255, 255, 255))
+                bw, bh = badge.get_width() + 16, badge.get_height() + 8
+                br = pygame.Rect(rect.right - bw - 8, rect.top + 8, bw, bh)
+                pygame.draw.rect(screen, (46, 160, 67), br, border_radius=8)
                 screen.blit(badge, (br.x + 8, br.y + 4))
 
             name_col = (250, 240, 220) if selected else (170, 160, 145)
