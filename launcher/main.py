@@ -140,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
                     launch_kodi()
                 except FileNotFoundError:
                     ui.flash("Kodi is not installed")
-                _resume_display(screen, config, args)
+                screen = _resume_display(screen, config, args)
                 hub.refresh()
             elif isinstance(action, tuple) and action[0] == "game":
                 game = action[1]
@@ -152,7 +152,7 @@ def main(argv: list[str] | None = None) -> int:
                 except Exception as e:  # noqa: BLE001
                     ui.flash(f"Could not start {game.name}")
                     print(e, file=sys.stderr)
-                _resume_display(screen, config, args)
+                screen = _resume_display(screen, config, args)
                 hub.refresh()
 
     pygame.quit()
@@ -235,8 +235,11 @@ def _resume_display(screen_holder, config, args) -> None:
     flags = 0
     if not args.windowed and os.environ.get("SDL_VIDEODRIVER") != "dummy":
         flags = pygame.FULLSCREEN | pygame.SCALED
-    pygame.display.set_mode((config.settings.width, config.settings.height), flags)
+    screen = pygame.display.set_mode((config.settings.width, config.settings.height), flags)
     pygame.display.set_caption("Zen Station")
+    # Drop any key/quit events left over from the game (e.g. its Esc or window close)
+    pygame.event.clear()
+    return screen
 
 
 if __name__ == "__main__":

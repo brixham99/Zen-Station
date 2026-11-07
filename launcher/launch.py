@@ -23,6 +23,7 @@ def launch_game(game: GameEntry, games_dir: Path) -> int:
     # Let the game open its own display; clear dummy drivers if set by selftest
     env.pop("SDL_VIDEODRIVER", None)
     env.pop("SDL_AUDIODRIVER", None)
+    env["ZENSTATION"] = "1"  # games run full screen and controller-friendly
     proc = subprocess.run(
         [python_for_games(), game.entry],
         cwd=str(path),
