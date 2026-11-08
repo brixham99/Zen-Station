@@ -187,8 +187,11 @@ class HomeScreen:
 
         title = self._font_title.render("Zen Station", True, (245, 235, 210))
         screen.blit(title, ((self.w - title.get_width()) // 2, 42))
-        sub = self._font_small.render("Pick a game · updates when available", True, (180, 170, 150))
-        screen.blit(sub, ((self.w - sub.get_width()) // 2, 104))
+        sub_y = 104
+        for line in ("Anderson Family - Gaming Creations", "\u00a9 2026 - Made in England"):
+            sub = self._font_small.render(line, True, (180, 170, 150))
+            screen.blit(sub, ((self.w - sub.get_width()) // 2, sub_y))
+            sub_y += sub.get_height() + 2
 
         base_y = self.ROW_Y
         # Fixed name baseline so selected scale doesn't push labels down
