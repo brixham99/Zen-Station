@@ -145,6 +145,16 @@ class ControllerHub:
 
         return actions
 
+    def buttons_held(self, *buttons: int) -> bool:
+        """True while every listed button is held on any one pad."""
+        for j in self.pads.values():
+            try:
+                if all(j.get_button(b) for b in buttons):
+                    return True
+            except pygame.error:
+                continue
+        return False
+
     def poll_sticks(self, dt: float) -> list[str]:
         """Edge-trigger left stick as D-pad with cooldown."""
         actions: list[str] = []
