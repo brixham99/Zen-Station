@@ -32,6 +32,7 @@ class UpdateService:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
+        self._setups: dict[str, subprocess.Popen] = {}
         self._updated_file = self.config.settings.games_dir / ".zen_updated.json"
         try:
             self.status.updated = set(json.loads(self._updated_file.read_text()))
@@ -61,6 +62,10 @@ class UpdateService:
 
     def stop(self) -> None:
         self._stop.set()
+
+    def setup_running(self, game_id: str) -> bool:
+        proc = self._setups.get(game_id)
+        return proc is not None and proc.poll() is None
 
     def _loop(self) -> None:
         # First check quickly
@@ -118,6 +123,7 @@ class UpdateService:
                 self.status.available[game.id] = False
                 self.status.updated.add(game.id)
                 self._save_updated()
+            self.run_setup(game)
         elif msg == "current":
             # Nothing new: no green Updated badge, and no stale Update available.
             with self._lock:
@@ -143,6 +149,7 @@ class UpdateService:
                 timeout=600,
             )
             self._pip_install(path)
+            self.run_setup(game)
             return "cloned"
         except OfflineError:
             with self._lock:
@@ -161,7 +168,35 @@ class UpdateService:
     def ensure_all_cloned(self) -> None:
         for g in self.config.games:
             if g.kind == "game" and g.repo:
-                self.ensure_cloned(g)
+                if self.ensure_cloned(g) == "present":
+                    self.run_setup(g)      # cheap when already done; catches a missed one
+
+    def run_setup(self, game: GameEntry) -> None:
+        """Start the game's setup step (if any) in the background, at low priority.
+
+        Hide and Seek uses this to build its room images after a clone or an
+        update, so the first play doesn't wait. The game itself waits for (or
+        does) the build if it isn't finished, so this is only a head start."""
+        if not game.setup:
+            return
+        path = game.path_under(self.config.settings.games_dir)
+        script = path / game.setup[0]
+        if not script.is_file():
+            return               # an older copy of the game without the step
+        py = os.environ.get("ZENSTATION_PYTHON", "")
+        if not py:
+            import sys
+            py = sys.executable
+        env = {**os.environ, "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy"}
+        env.pop("ZENSTATION", None)
+        try:
+            proc = subprocess.Popen([py, *game.setup], cwd=str(path), env=env,
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                    preexec_fn=lambda: os.nice(10))
+        except (OSError, ValueError):
+            return
+        with self._lock:
+            self._setups[game.id] = proc
 
     def _pull(self, path: Path, branch: str, label: str) -> str:
         with self._lock:

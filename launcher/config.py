@@ -21,6 +21,9 @@ class GameEntry:
     folder: str = ""
     thumbnail: str | None = None
     kind: str = "game"  # game | action | tv
+    # Optional one-off preparation after a clone or update, run with the games'
+    # Python in the game folder (e.g. Hide and Seek pre-builds its room images).
+    setup: list[str] = field(default_factory=list)
 
     def path_under(self, games_dir: Path) -> Path:
         folder = self.folder or self.id
@@ -49,6 +52,14 @@ def _expand(p: str) -> Path:
     return Path(os.path.expanduser(p)).resolve()
 
 
+def _setup_list(v: Any) -> list[str]:
+    if not v:
+        return []
+    if isinstance(v, str):
+        return v.split()
+    return [str(x) for x in v]
+
+
 def load_config(path: Path | None = None) -> Config:
     cfg_path = Path(path) if path else DEFAULT_CONFIG
     with open(cfg_path, encoding="utf-8") as f:
@@ -75,6 +86,7 @@ def load_config(path: Path | None = None) -> Config:
                 folder=g.get("folder", g["id"]),
                 thumbnail=g.get("thumbnail"),
                 kind=g.get("kind", "game"),
+                setup=_setup_list(g.get("setup")),
             )
         )
     return Config(settings=settings, games=games, path=cfg_path)

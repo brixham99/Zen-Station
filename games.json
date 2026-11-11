@@ -43,6 +43,16 @@
       "entry": "game.py",
       "folder": "Courtyard",
       "thumbnail": "assets/thumbnails/courtyard.png"
+    },
+    {
+      "id": "hide-and-seek",
+      "name": "Hide and Seek (Beta)",
+      "repo": "https://github.com/brixham99/Hide-and-Seek.git",
+      "branch": "main",
+      "entry": "game.py",
+      "folder": "Hide-and-Seek",
+      "thumbnail": "assets/thumbnails/hide-and-seek.png",
+      "setup": ["zenbuild.py", "--background"]
     }
   ]
 }

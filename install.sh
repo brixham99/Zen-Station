@@ -82,6 +82,15 @@ for g in cfg.get("games", []):
     req = path / "requirements.txt"
     if req.is_file():
         run([pip, "install", "-r", str(req)])
+    setup = g.get("setup") or []
+    if isinstance(setup, str):
+        setup = setup.split()
+    if setup and (path / setup[0]).is_file():
+        # one-off preparation, e.g. Hide and Seek builds its room images (a minute or two on a Pi 5)
+        env = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
+        env.pop("ZENSTATION", None)
+        print("+", py, " ".join(setup))
+        subprocess.run([py, *[a for a in setup if a != "--background"]], cwd=str(path), env=env, check=False)
 print("Games ready under", games_dir)
 PY
 

@@ -116,6 +116,15 @@ def test_update_check_local(games_dir: Path) -> None:
     )
 
 
+def test_setup_field() -> None:
+    cfg = load_config(ROOT / "games.json")
+    hs = [g for g in cfg.games if g.id == "hide-and-seek"]
+    assert hs and hs[0].name == "Hide and Seek (Beta)", hs
+    assert hs[0].setup == ["zenbuild.py", "--background"], hs[0].setup
+    assert all(g.setup == [] for g in cfg.games if g.id != "hide-and-seek")
+    print("setup field ok")
+
+
 def main() -> int:
     out = shot_dir()
     print("shots ->", out)
@@ -128,6 +137,7 @@ def main() -> int:
             ("Haunted-Mansion", Path("/workspace/Haunted-Mansion")),
             ("Moon-Sweeper", Path("/tmp/ms-check")),
             ("Courtyard", Path("/tmp/ct-check")),
+            ("Hide-and-Seek", Path("/workspace/hs-zen")),
         ]:
             if src.is_dir():
                 link = games_dir / name
@@ -168,6 +178,9 @@ def main() -> int:
             cfg_normal,
             ["--select", "0", "--fake-pad", "xbox"],
         )
+
+        run_shot("zen_hs_launcher_tile.png", cfg_normal, ["--select", "4", "--fake-pad", "xbox"])
+        test_setup_field()
 
         test_navigation(cfg_many)
         test_update_check_local(games_dir)

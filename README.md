@@ -1,7 +1,7 @@
 # Zen Station
 
 A controller-driven home screen for a Raspberry Pi 5 plugged into the telly.
-Pick Daleks in Hedges, Haunted Mansion, Moon Sweeper or Courtyard, update them
+Pick Daleks in Hedges, Haunted Mansion, Moon Sweeper, Courtyard or Hide and Seek (Beta), update them
 from GitHub, or open Kodi for TV.
 
 British English on screen. Native draw size is 1280×720, full-screen scaled on
@@ -101,6 +101,13 @@ Edit `games.json` — one object per game:
 }
 ```
 
+A game can also list a one-off `"setup"` step, a script in its own folder run
+with the games' Python after it is cloned or updated (and checked at each
+start). Hide and Seek uses `["zenbuild.py", "--background"]` to build its room
+images in the background at low priority, so the first play doesn't wait; if
+you start it before that has finished, the game shows a progress screen and
+carries on from where the build has got to.
+
 `install.sh` and the launcher both auto-clone any listed game that is not yet
 under `~/games/`. If no thumbnail is set (or the file is missing), the launcher
 looks for the game’s own title art, then falls back to a generated name card.
@@ -131,13 +138,19 @@ file.
   Haunted-Mansion/
   Moon-Sweeper/
   Courtyard/
+  Hide-and-Seek/        # cache/ inside holds its built room images (not in git)
 ```
 
 ## Controller support in the games
 
-The launcher itself understands Xbox and PlayStation pads. The four games do
-**not** have controller support yet — that is a separate job. Until then use the
-keyboard in-game (or expect to add pad mapping per game).
+The launcher itself understands Xbox and PlayStation pads. Haunted Mansion and
+Hide and Seek have full pad support (hold **Back / Share** for a second to quit
+back to Zen Station); for the others use the keyboard in-game until they get
+pad mapping.
+
+Hide and Seek on a pad: left stick or D-pad turns and walks (tank controls),
+right trigger walks forwards, **Y / Triangle** looks from the other side, **B /
+Circle** goes back to the title, **A / Cross** starts.
 
 ## Caveats on the Pi 5
 
