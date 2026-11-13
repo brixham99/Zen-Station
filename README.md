@@ -1,5 +1,7 @@
 # Zen Station
 
+![Zen Station screenshot](docs/screenshot.png)
+
 A controller-driven home screen for a Raspberry Pi 5 plugged into the telly.
 Pick Daleks in Hedges, Haunted Mansion, Moon Sweeper, Courtyard or Hide and Seek (Beta), update them
 from GitHub, or open Kodi for TV.
